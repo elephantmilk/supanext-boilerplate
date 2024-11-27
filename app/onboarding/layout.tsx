@@ -1,4 +1,4 @@
-import { Logo } from "@/components/Logo";
+
 
 export default function OnboardingLayout({
   children,
@@ -12,7 +12,7 @@ export default function OnboardingLayout({
         <div className="mx-auto h-full p-8">
           {/* Logo */}
           <div className="mb-8">
-            <Logo />
+           
           </div>
           
           {/* Content Area */}

@@ -4,7 +4,13 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
@@ -17,8 +23,64 @@ export default function OnboardingPage() {
     childrenages: [],
     married: null,
     partnername: "",
+    childrenRelations: [] as string[],
+    phone: "",
   });
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    loadFormData();
+  }, []);
+
+  const loadFormData = async () => {
+    const { data, error } = await supabase
+      .from('onboarding_data')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+
+    if (data) {
+      setFormData({
+        name: data.name || "",
+        age: data.age || "",
+        email: data.email || "",
+        children: data.has_children,
+        childrencount: data.children_count || "",
+        childrenages: data.children_ages || [],
+        married: data.is_married,
+        partnername: data.partner_name || "",
+        childrenRelations: data.children_relations || [],
+        phone: data.phone || "",
+      });
+    }
+  };
+
+  const saveFormData = async () => {
+    const { error } = await supabase
+      .from('onboarding_data')
+      .upsert({
+        name: formData.name,
+        age: formData.age,
+        email: formData.email,
+        has_children: formData.children,
+        children_count: formData.childrencount,
+        children_ages: formData.childrenages,
+        is_married: formData.married,
+        partner_name: formData.partnername,
+        children_relations: formData.childrenRelations,
+        phone: formData.phone,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      });
+
+    if (error) {
+      console.error('Fehler beim Speichern:', error.message);
+      return;
+    }
+
+    console.log('Daten erfolgreich gespeichert');
+  };
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -31,7 +93,7 @@ export default function OnboardingPage() {
     return age >= 18 && age <= 100;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     let validationError = "";
 
     switch (step) {
@@ -41,6 +103,17 @@ export default function OnboardingPage() {
       case 3:
         validationError = validateEmail(formData.email);
         break;
+      case 7:
+        if (formData.children && formData.married && 
+            formData.childrenRelations.length < parseInt(formData.childrencount)) {
+          validationError = "Bitte geben Sie für jedes Kind die Beziehung an";
+        }
+        break;
+      case 8:
+        if (!formData.phone) {
+          validationError = "Bitte geben Sie Ihre Telefonnummer ein";
+        }
+        break;
     }
 
     if (validationError) {
@@ -48,6 +121,7 @@ export default function OnboardingPage() {
       return;
     }
 
+    await saveFormData();
     setError("");
     setStep(step + 1);
   };
@@ -148,7 +222,8 @@ export default function OnboardingPage() {
                   ...formData,
                   children: value === "true",
                   childrencount: "",
-                  childrenages: []
+                  childrenages: [],
+                  childrenRelations: [],
                 });
               }}
             >
@@ -276,6 +351,70 @@ export default function OnboardingPage() {
             )}
           </>
         );
+
+      case 7:
+        return formData.children && formData.married ? (
+          <>
+            <div>
+              <h1 className="text-2xl font-semibold">
+                In welcher Beziehung stehen die Kinder zu {formData.partnername}?
+              </h1>
+            </div>
+            <div className="space-y-4 mt-4">
+              {Array.from({ length: parseInt(formData.childrencount) }, (_, i) => (
+                <div key={i} className="space-y-2">
+                  <Label>Kind {i + 1} ({formData.childrenages[i]} Jahre)</Label>
+                  <RadioGroup
+                    value={formData.childrenRelations[i]}
+                    onValueChange={(value) => {
+                      const newRelations = [...formData.childrenRelations];
+                      newRelations[i] = value;
+                      setFormData({ ...formData, childrenRelations: newRelations });
+                    }}
+                  >
+                    <div className="flex space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="leiblich" id={`leiblich-${i}`} />
+                        <Label htmlFor={`leiblich-${i}`}>leiblich</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="angeheiratet" id={`angeheiratet-${i}`} />
+                        <Label htmlFor={`angeheiratet-${i}`}>angeheiratet</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="adoptiert" id={`adoptiert-${i}`} />
+                        <Label htmlFor={`adoptiert-${i}`}>adoptiert</Label>
+                      </div>
+                    </div>
+                  </RadioGroup>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null;
+
+      case 8:
+        return (
+          <>
+            <div>
+              <h1 className="text-2xl font-semibold">
+                Können wir Sie telefonisch erreichen?
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Hier bitte Ihre Telefonnummer
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Input
+                type="tel"
+                placeholder="Telefonnummer"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                required
+              />
+            </div>
+          </>
+        );
     }
   };
 
@@ -300,10 +439,12 @@ export default function OnboardingPage() {
             (step === 4 && formData.children && !formData.childrencount) ||
             (step === 5 && formData.children && formData.childrenages.length < parseInt(formData.childrencount)) ||
             (step === 6 && formData.married === null) ||
-            (step === 6 && formData.married && !formData.partnername)
+            (step === 6 && formData.married && !formData.partnername) ||
+            (step === 7 && formData.childrenRelations.length < parseInt(formData.childrencount)) ||
+            (step === 8 && !formData.phone)
           }
         >
-          {step === 6 ? "Fertig" : "Zum nächsten Schritt"}
+          {step === 8 ? "Fertig" : "Zum nächsten Schritt"}
         </Button>
       </div>
     </div>

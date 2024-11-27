@@ -1,4 +1,5 @@
 import { SITE_NAME } from "@/lib/constants";
+import { Logo } from "@/components/Logo";
 import Link from "next/link";
 import React from "react";
 import HeaderProfile from "./HeaderProfile";
@@ -22,9 +23,7 @@ export default async function Header() {
 
   return (
     <header className="flex items-center justify-between py-4">
-      <Link href="/">
-        <div className="text-foreground">{SITE_NAME}</div>
-      </Link>
+       <Logo />
 
       <div className="flex items-center">
         {user ? (
