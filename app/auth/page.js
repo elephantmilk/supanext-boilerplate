@@ -7,13 +7,14 @@ import { supaBrowser } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import { UserRoundIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-
+import { toast } from "sonner";
 import React, { useState } from "react";
 
 const Page = () => {
   const [email, setEmail] = useState("");
   const [showOTP, setShowOTP] = useState(false);
   const [otp, setOTP] = useState("");
+  const [password, setPassword] = useState("");
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/";
@@ -23,20 +24,6 @@ const Page = () => {
 
     supabase.auth.signInWithOAuth({
       provider,
-      options: {
-        redirectTo:
-          //   process.env.NEXT_PUBLIC_SUPABASE_REDIRECT_URL ||
-          window.location.origin + "/auth/callback?next=" + next, //can add ?next=/dashboard for instance to redirect after login
-      },
-    });
-  };
-
-  const handleEmailPassLogin = async (email, pass) => {
-    const supabase = supaBrowser();
-
-    supabase.auth.signInWithPassword({
-      email: email,
-      password: pass,
       options: {
         redirectTo:
           //   process.env.NEXT_PUBLIC_SUPABASE_REDIRECT_URL ||
@@ -61,6 +48,27 @@ const Page = () => {
         // User is signed in
         setShowOTP(true);
       }
+    }
+  };
+
+  const handlePasswordLogin = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const supabase = supaBrowser();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) throw error;
+      
+      // Erfolgreicher Login
+      router.push(next);
+      
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Login fehlgeschlagen');
     }
   };
 
@@ -133,46 +141,27 @@ const Page = () => {
                   className="w-full"
                   variant="outline"
                   onClick={() => handleEmailOTP(email)}>
-                  Send One-Time Password
+                  Send Magic Link
                 </Button>
               </div>
 
-              {/* {showOTP ? (
-            <div>
-              <div className="text-muted-foreground mb-2">
-                Check your email for a one-time password
-              </div>
-              <div className="flex w-full max-w-sm items-center space-x-2">
+              <hr className="my-4 border-1" />
+              
+              <form onSubmit={handlePasswordLogin} className="mt-4 grid gap-2">
                 <Input
-                  placeholder="One-Time Password"
-                  value={otp}
-                  type="email"
-                  onChange={(e) => setOTP(e.target.value)}
+                  className="w-full"
+                  placeholder="Password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <Button
+                  className="w-full"
                   variant="outline"
-                  onClick={() => handleVerifyOTP(email, otp)}>
-                  Verify
+                  type="submit">
+                  Login with Password
                 </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-4 grid gap-2">
-              <Input
-                className="w-full"
-                placeholder="Email"
-                value={email}
-                type="email"
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <Button
-                className="w-full"
-                variant="outline"
-                onClick={() => handleEmailOTP(email)}>
-                Send One-Time Password
-              </Button>
-            </div>
-          )} */}
+              </form>
             </div>
             <div className="back rotate-y-180 backface-hidden  |  w-96 h-80 rounded border p-4 shadow-md bg-background">
               <div className="flex h-full flex-col justify-center">

@@ -3,10 +3,9 @@ import {
   Share_Tech_Mono as fontMono,
 } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/ThemeProvider";
 import { cn } from "@/lib/utils";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import Header from "@/components/Header";
-import { Toaster } from "@/components/ui/sonner";
 
 const sans = fontSans({
   subsets: ["latin"],
@@ -20,9 +19,8 @@ const mono = fontMono({
 });
 
 export const metadata = {
-  title: "Supanext",
-  description:
-    "Brought to yo by Fox & Bear, boilerplate for Next.js with Tailwind CSS and Supabase",
+  title: "Heritaxa",
+  description: "Heritaxa Prototype",
 };
 
 export default function RootLayout({ children }) {
@@ -42,11 +40,10 @@ export default function RootLayout({ children }) {
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange>
-          <main className="container mx-auto">
+          <main className="mx-auto">
             <Header />
             {children}
           </main>
-          <Toaster />
         </ThemeProvider>
       </body>
     </html>

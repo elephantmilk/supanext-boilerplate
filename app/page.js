@@ -1,25 +1,22 @@
-import { FileUpload } from "@/components/FileUpload";
-import React from "react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
-const page = () => {
+export default function Home() {
   return (
-    <>
-      <div className="flex-grow self-center pt-20">
-        <h3>Includes: File Upload</h3>
-        <p>
-          This will upload a file into the /public uploads folder based on the
-          "FILE_UPLOAD_DIR" provided in lib/constants.js.{" "}
+    <main className="flex min-h-screen flex-col items-center justify-center p-24">
+      <div className="text-center space-y-6">
+        <h1 className="text-4xl font-bold">
+          Willkommen bei Heritaxa
+        </h1>
+        <p className="text-xl text-muted-foreground">
+          Lassen Sie uns gemeinsam Ihr Profil erstellen
         </p>
-        <p>
-          The file will be placed in a directory based on the path provided
-          which can be subdirectories, (e.g
-          path="/user-uploads/somesubdirectory/") but defaults to "uploads" if
-          no path is provided.
-        </p>
-        <FileUpload path="user-uploads" />
+        <Button asChild size="lg">
+          <Link href="/onboarding">
+            Profil erstellen
+          </Link>
+        </Button>
       </div>
-    </>
+    </main>
   );
-};
-
-export default page;
+}

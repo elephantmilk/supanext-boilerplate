@@ -1,19 +1,22 @@
-import { supaServer } from "@/lib/supabase/server";
-import React from "react";
-import AccountForm from "./AccountForm";
-import { getProfile } from "@/lib/dal/user";
+import { getServerSupabase } from '@/lib/supabase/server';
+import AccountForm from './AccountForm';
+import { redirect } from 'next/navigation';
 
 const Page = async () => {
-  const supabase = supaServer();
+  const supabase = getServerSupabase();
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
-  const id = session?.user.id;
+  if (!session) {
+    redirect('/auth');
+  }
 
-  let { data } = await getProfile(id);
-
-  return data ? <AccountForm profile={data} session={session} /> : null;
+  return (
+    <div className="max-w-[600px] mx-auto py-6">
+      <AccountForm />
+    </div>
+  );
 };
 
 export default Page;

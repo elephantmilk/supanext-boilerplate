@@ -71,6 +71,14 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        'brand': {
+          DEFAULT: '#29A5A5',
+          light: '#F0F7F6',
+          dark: '#222222',
+        },
+        teal: {
+          500: '#259a9a',
+        }
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -105,6 +113,10 @@ module.exports = {
         "fade-in": "fade-in 0.75s ease-out forwards",
         "fade-out": "fade-out 0.75s ease-out forwards",
         "pop-in": "pop-in 1s cubic-bezier(.62,.42,.62,1.17) forwards",
+      },
+      width: {
+        '33': '33.333333%',
+        '66': '66.666667%'
       },
     },
   },

@@ -1,119 +1,178 @@
 "use client";
+import { supaClient } from '@/lib/supabase/client';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import React, { useEffect, useState } from "react";
-import Avatar from "./Avatar";
-import { updateProfile } from "@/lib/dal/user";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 
-const AccountForm = ({ profile, session }) => {
-  const [full_name, setFull_name] = useState("");
-  const [username, setUsername] = useState("");
-  const [website, setWebsite] = useState("");
-  const [avatar_url, setAvatar_Url] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+export default function AccountForm() {
+  const [loading, setLoading] = useState(false);
+  const [avatar, setAvatar] = useState(null);
+  const [profile, setProfile] = useState(null);
 
+  // Profildaten aus Supabase laden
   useEffect(() => {
-    if (profile) {
-      setFull_name(profile.full_name);
-      setUsername(profile.username);
-      setWebsite(profile.website);
-      setAvatar_Url(profile.avatar_url);
-    }
+    loadProfile();
+  }, []);
 
-    return () => {
-      setFull_name("");
-      setUsername("");
-      setWebsite("");
-      setAvatar_Url("");
-    };
-  }, [profile]);
+  async function loadProfile() {
+    try {
+      const { data: { user } } = await supaClient.auth.getUser();
+      if (!user) throw new Error('Nicht eingeloggt');
 
-  const handleUpdateProfile = async () => {
-    setIsLoading(true);
-    const response = await updateProfile(profile.id, {
-      full_name,
-      username,
-      website,
-    });
-    if (response.error) {
-      toast.error("Error updating profile:", response.error);
-    }
+      // Profildaten laden
+      const { data, error } = await supaClient
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    if (response.ok) {
-      toast.success("Profile updated");
+      if (error) throw error;
+      setProfile(data || {});
+
+    } catch (error) {
+      console.error('Fehler beim Laden:', error);
+      toast.error('Profil konnte nicht geladen werden');
     }
-    setIsLoading(false);
+  }
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setProfile(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
+  const handleAvatarChange = async (e) => {
+    try {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        toast.error('Bitte nur Bilder hochladen');
+        return;
+      }
+
+      setAvatar(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfile(prev => ({
+          ...prev,
+          avatar_url: reader.result
+        }));
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Avatar Fehler:', error);
+      toast.error('Fehler beim Avatar-Upload');
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!profile) return;
+    
+    setLoading(true);
+    try {
+      const { data: { user } } = await supaClient.auth.getUser();
+      if (!user) throw new Error('Nicht eingeloggt');
+
+      // Avatar hochladen wenn vorhanden
+      if (avatar) {
+        const fileExt = avatar.name.split('.').pop();
+        const filePath = `avatars/${user.id}-${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supaClient.storage
+          .from('avatars')
+          .upload(filePath, avatar);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supaClient.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+        profile.avatar_url = publicUrl;
+      }
+
+      // Profil aktualisieren
+      const { error } = await supaClient
+        .from('profiles')
+        .upsert({
+          ...profile,
+          id: user.id,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+      toast.success('Profil aktualisiert!');
+      
+    } catch (error) {
+      console.error('Update Fehler:', error);
+      toast.error('Fehler beim Speichern');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!profile) return <div>Lade...</div>;
+
   return (
-    <>
-      <div className="mt-20 w-96 p-4 mx-auto grid gap-4 border border-border shadow-lg rounded">
-        <Avatar user_id={profile.id} url={avatar_url} size={150} />
-
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+      {/* Avatar Upload */}
+      <div className="flex flex-col items-center gap-4">
+        <Avatar className="w-32 h-32">
+          <AvatarImage src={profile.avatar_url} />
+          <AvatarFallback>{profile.full_name?.charAt(0) || '?'}</AvatarFallback>
+        </Avatar>
         <div>
-          <Label htmlFor="email">Email</Label>
           <Input
-            id="email"
-            type="email"
-            value={session.user.email || ""}
-            disabled
-            // onChange={(e) => setFull_name(e.target.value)}
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarChange}
+            className="hidden"
+            id="avatar-upload"
           />
-        </div>
-        <div>
-          <Label htmlFor="fullName">Full Name</Label>
-          <Input
-            id="fullName"
-            type="text"
-            value={full_name || ""}
-            onChange={(e) => setFull_name(e.target.value)}
-          />
-        </div>
-        <div>
-          <Label htmlFor="username">Username</Label>
-          <Input
-            id="username"
-            type="text"
-            value={username || ""}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-        </div>
-        {/* <Button onClick={() => setUsername(generateName())}>
-          Generate Name
-        </Button>
-        <Button onClick={() => setUserColour(getUserColor(username))}>
-          Colour
-          {userColour && (
-            <span
-              className="w-4 h-4 rounded-full inline-block ml-2"
-              style={{ backgroundColor: `rgb(${userColour.rgb})` }}></span>
-          )}
-        </Button> */}
-        <div>
-          <Label htmlFor="website">Website</Label>
-          <Input
-            id="website"
-            type="url"
-            value={website || ""}
-            onChange={(e) => setWebsite(e.target.value)}
-          />
-        </div>
-
-        <div className="flex gap-4 mt-4">
-          <Button
-            className="button"
-            onClick={() => handleUpdateProfile()}
-            disabled={isLoading}>
-            {/* {isLoading ? "Loading ..." : "Update"} */}
-            Update
-          </Button>
+          <Label 
+            htmlFor="avatar-upload" 
+            className="cursor-pointer px-4 py-2 border rounded-md hover:bg-gray-100"
+          >
+            Avatar ändern
+          </Label>
         </div>
       </div>
-    </>
-  );
-};
-// };
 
-export default AccountForm;
+      {/* Dynamische Profilfelder */}
+      <div className="grid grid-cols-1 gap-4">
+        {Object.entries(profile)
+          .filter(([key]) => !['id', 'created_at', 'updated_at', 'avatar_url'].includes(key))
+          .map(([key, value]) => (
+            <div key={key}>
+              <Label htmlFor={key}>
+                {key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+              </Label>
+              <Input
+                id={key}
+                name={key}
+                value={value || ''}
+                onChange={handleChange}
+                disabled={key === 'username'} // Username ist read-only
+                type={key === 'email' ? 'email' : key === 'website' ? 'url' : 'text'}
+                className={key === 'username' ? 'bg-gray-100' : ''}
+              />
+              {key === 'username' && (
+                <span className="text-sm text-gray-500">Automatisch generiert</span>
+              )}
+            </div>
+          ))}
+      </div>
+
+      <Button type="submit" disabled={loading} className="w-full">
+        {loading ? 'Wird gespeichert...' : 'Profil aktualisieren'}
+      </Button>
+    </form>
+  );
+}
